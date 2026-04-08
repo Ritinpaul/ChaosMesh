@@ -1,4 +1,4 @@
-0"""
+"""
 OpenEnv compatibility aliases.
 
 Some validators call canonical routes without the /env prefix:

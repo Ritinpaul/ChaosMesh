@@ -18,6 +18,7 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
 ]
 dependencies = [
+  "openenv-core>=0.2.0",
   # Core RL / Gymnasium
   "gymnasium>=0.29.1",
   # Async framework
@@ -84,6 +85,7 @@ examples = [
 ]
 
 [project.scripts]
+server = "server.main:run"
 chaosmesh-server = "server.main:run"
 chaosmesh = "chaosmesh_arena.cli.main:main"
 

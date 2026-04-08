@@ -1,5 +1,15 @@
 """ASGI app entrypoint expected by OpenEnv validators."""
 
-from server.main import app
+from server.main import app, run
 
-__all__ = ["app"]
+
+def main() -> None:
+	"""CLI entrypoint for validators expecting server.app:main."""
+	run()
+
+
+if __name__ == "__main__":
+	main()
+
+
+__all__ = ["app", "main"]

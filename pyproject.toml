@@ -85,7 +85,7 @@ examples = [
 ]
 
 [project.scripts]
-server = "server.main:run"
+server = "server.app:main"
 chaosmesh-server = "server.main:run"
 chaosmesh = "chaosmesh_arena.cli.main:main"
 

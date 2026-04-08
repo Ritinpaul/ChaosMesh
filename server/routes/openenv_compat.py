@@ -21,6 +21,9 @@ router = APIRouter(tags=["openenv-compat"])
 
 
 @router.post("/reset", include_in_schema=False)
+@router.post("/openenv/reset", include_in_schema=False)
+@router.post("/api/reset", include_in_schema=False)
+@router.post("/api/openenv/reset", include_in_schema=False)
 async def reset_alias(
     request: ResetRequest,
     user: AuthenticatedUser = Depends(require_auth),
@@ -29,6 +32,9 @@ async def reset_alias(
 
 
 @router.post("/step", include_in_schema=False)
+@router.post("/openenv/step", include_in_schema=False)
+@router.post("/api/step", include_in_schema=False)
+@router.post("/api/openenv/step", include_in_schema=False)
 async def step_alias(
     request: StepRequest,
     user: AuthenticatedUser = Depends(require_auth),
@@ -37,6 +43,9 @@ async def step_alias(
 
 
 @router.get("/state", include_in_schema=False)
+@router.get("/openenv/state", include_in_schema=False)
+@router.get("/api/state", include_in_schema=False)
+@router.get("/api/openenv/state", include_in_schema=False)
 async def state_alias(
     user: AuthenticatedUser = Depends(require_auth),
 ) -> Response:

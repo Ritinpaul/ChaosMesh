@@ -1,3 +1,13 @@
+---
+title: ChaosMesh Arena
+emoji: ⚡
+colorFrom: indigo
+colorTo: slate
+sdk: docker
+app_port: 8000
+pinned: false
+---
+
 <div align="center">
 
 # ⚡ ChaosMesh Arena

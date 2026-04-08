@@ -52,9 +52,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "max-age=31536000; includeSubDomains; preload"
             )
 
-        # Remove server fingerprinting headers
-        response.headers.pop("server", None)
-        response.headers.pop("x-powered-by", None)
+        # Remove server fingerprinting headers.
+        for header_name in ("server", "x-powered-by"):
+            if header_name in response.headers:
+                del response.headers[header_name]
 
         return response
 

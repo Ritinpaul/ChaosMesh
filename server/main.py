@@ -40,6 +40,7 @@ from server.routes.demo import router as demo_router
 from server.routes.env import router as env_router
 from server.routes.episodes import router as episodes_router
 from server.routes.leaderboard import router as leaderboard_router
+from server.routes.openenv_compat import router as openenv_compat_router
 from server.ws_manager import ws_manager
 
 log = structlog.get_logger(__name__)
@@ -146,6 +147,7 @@ except ImportError:
 # ── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(auth_router)      # /auth/*
 app.include_router(env_router)       # /env/*
+app.include_router(openenv_compat_router)  # /reset /step /state aliases
 app.include_router(demo_router)      # /demo/*
 app.include_router(episodes_router)  # /episodes/*
 app.include_router(leaderboard_router)  # /leaderboard/*
@@ -169,6 +171,18 @@ if frontend_dist.exists():
         return {"error": "Frontend not built. Run: cd frontend && npm install && npm run build"}
 else:
     log.warning("react_frontend_not_found", path=str(frontend_dist))
+
+    @app.get("/", include_in_schema=False)
+    async def root_fallback():
+        """Fallback root when SPA bundle is unavailable in container."""
+        return {
+            "name": "ChaosMesh Arena",
+            "status": "backend-online",
+            "message": "React frontend bundle not found. Use /docs for API explorer.",
+            "docs": "/docs",
+            "health": "/health",
+            "metrics": "/metrics",
+        }
 
 
 # ── Health ────────────────────────────────────────────────────────────────────

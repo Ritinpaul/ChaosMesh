@@ -25,7 +25,7 @@ router = APIRouter(tags=["openenv-compat"])
 @router.post("/api/reset", include_in_schema=False)
 @router.post("/api/openenv/reset", include_in_schema=False)
 async def reset_alias(
-    request: ResetRequest,
+    request: ResetRequest | None = None,
 ) -> Response:
     # Validator compatibility: allow unauthenticated calls via a shared demo user.
     user = AuthenticatedUser(
@@ -34,7 +34,7 @@ async def reset_alias(
         plan="pro",
         auth_method="validator_compat",
     )
-    return await env_reset(request=request, user=user)
+    return await env_reset(request=request or ResetRequest(), user=user)
 
 
 @router.post("/step", include_in_schema=False)

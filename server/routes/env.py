@@ -52,7 +52,7 @@ def _get_session_id(user_id: str) -> str:
     summary="RFC 001 — Initialize a new episode",
 )
 async def reset(
-    request: ResetRequest,
+    request: ResetRequest | None = None,
     user: AuthenticatedUser = Depends(require_auth),
 ) -> Response:
     """
@@ -61,6 +61,7 @@ async def reset(
     Free plan: max 100 episodes/month.
     """
     settings = get_settings()
+    request = request or ResetRequest()
 
     # ── Plan enforcement ───────────────────────────────────────────────────────
     if request.level.value > 3 and not user.is_pro:

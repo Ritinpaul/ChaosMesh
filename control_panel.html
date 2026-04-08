@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ChaosMesh Arena - Simple Control Panel</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .container {
+            background: #1e293b;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #334155;
+        }
+        h1 {
+            color: #4f46e5;
+            margin-top: 0;
+        }
+        h2 {
+            color: #818cf8;
+            font-size: 18px;
+            margin-top: 0;
+        }
+        button {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #4338ca;
+        }
+        button.secondary {
+            background: #64748b;
+        }
+        button.secondary:hover {
+            background: #475569;
+        }
+        select {
+            background: #0f172a;
+            color: #e2e8f0;
+            border: 1px solid #334155;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        input {
+            background: #0f172a;
+            color: #e2e8f0;
+            border: 1px solid #334155;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 16px;
+            margin-right: 10px;
+            width: 300px;
+        }
+        #status {
+            background: #0f172a;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .success {
+            color: #34d399;
+        }
+        .error {
+            color: #ef4444;
+        }
+        .info {
+            color: #38bdf8;
+        }
+        pre {
+            background: #0f172a;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .label {
+            display: inline-block;
+            width: 150px;
+            color: #94a3b8;
+        }
+    </style>
+</head>
+<body>
+    <h1>⚡ ChaosMesh Arena - Simple Control Panel</h1>
+    
+    <div class="container">
+        <h2>System Status</h2>
+        <div id="health-status">Checking server...</div>
+        <button onclick="checkHealth()" class="secondary">Refresh Status</button>
+    </div>
+
+    <div class="container">
+        <h2>Episode Control</h2>
+        <div>
+            <label class="label">Select Level:</label>
+            <select id="level-select">
+                <option value="1">L1 - Pod Crash</option>
+                <option value="2">L2 - Cascade</option>
+                <option value="3">L3 - Ambiguous</option>
+                <option value="4">L4 - Dynamic</option>
+                <option value="5">L5 - Compound</option>
+            </select>
+            <button onclick="createEpisode()">▶ Start New Episode</button>
+        </div>
+        <div id="episode-status" style="margin-top: 15px;"></div>
+    </div>
+
+    <div class="container">
+        <h2>Current State</h2>
+        <button onclick="getState()" class="secondary">Get Current State</button>
+        <button onclick="startAutoRefresh()" class="secondary">Auto-Refresh (2s)</button>
+        <button onclick="stopAutoRefresh()" class="secondary">Stop Auto-Refresh</button>
+        <pre id="state-display">Click "Get Current State" to view...</pre>
+    </div>
+
+    <div class="container">
+        <h2>Inject Incident</h2>
+        <div>
+            <label class="label">Scenario:</label>
+            <select id="scenario-select">
+                <option value="pod_crash">Pod OOM Crash</option>
+                <option value="cascading_db">Cascading DB Timeout</option>
+                <option value="ambiguous_attack">Attack or Misconfiguration</option>
+            </select>
+            <button onclick="injectIncident()">💥 Inject</button>
+        </div>
+        <div id="inject-status" style="margin-top: 15px;"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        const API_KEY = 'cm_demo_change_me';
+        let refreshInterval = null;
+
+        async function checkHealth() {
+            const statusDiv = document.getElementById('health-status');
+            statusDiv.innerHTML = '<span class="info">Checking...</span>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                
+                statusDiv.innerHTML = `
+                    <span class="success">✓ Server Running</span><br>
+                    <span class="label">Version:</span> ${data.version}<br>
+                    <span class="label">Ollama:</span> ${data.ollama_available ? '✓ Available' : '✗ Not Available'}<br>
+                    <span class="label">Redis:</span> ${data.redis_connected ? '✓ Connected' : '✗ Not Connected'}<br>
+                    <span class="label">Uptime:</span> ${data.uptime_seconds.toFixed(1)}s<br>
+                    <span class="label">Active Episode:</span> ${data.active_episode || 'None'}
+                `;
+            } catch (error) {
+                statusDiv.innerHTML = `<span class="error">✗ Server not responding: ${error.message}</span>`;
+            }
+        }
+
+        async function createEpisode() {
+            const level = document.getElementById('level-select').value;
+            const statusDiv = document.getElementById('episode-status');
+            statusDiv.innerHTML = '<span class="info">Creating episode...</span>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/env/reset`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': API_KEY
+                    },
+                    body: JSON.stringify({ level: parseInt(level) })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    statusDiv.innerHTML = `
+                        <span class="success">✓ Episode Created!</span><br>
+                        <span class="label">Episode ID:</span> ${data.episode_id}<br>
+                        <span class="label">Level:</span> ${level}<br>
+                        <span class="label">Active Incidents:</span> ${data.observation.active_incidents.length}
+                    `;
+                    getState(); // Auto-refresh state
+                } else {
+                    statusDiv.innerHTML = `<span class="error">✗ Error: ${JSON.stringify(data)}</span>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<span class="error">✗ Error: ${error.message}</span>`;
+            }
+        }
+
+        async function getState() {
+            const stateDisplay = document.getElementById('state-display');
+            
+            try {
+                const response = await fetch(`${API_BASE}/env/state`, {
+                    headers: { 'X-API-Key': API_KEY }
+                });
+                
+                const data = await response.json();
+                stateDisplay.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                stateDisplay.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        async function injectIncident() {
+            const scenario = document.getElementById('scenario-select').value;
+            const statusDiv = document.getElementById('inject-status');
+            statusDiv.innerHTML = '<span class="info">Injecting...</span>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/demo/inject`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': API_KEY
+                    },
+                    body: JSON.stringify({
+                        scenario_key: scenario,
+                        description: `Manual injection via control panel`,
+                        level: 1
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    statusDiv.innerHTML = `
+                        <span class="success">✓ Incident Injected!</span><br>
+                        <span class="label">Title:</span> ${data.title}<br>
+                        <span class="label">Incident ID:</span> ${data.incident_id}<br>
+                        <span class="label">Affected:</span> ${data.affected_pods.join(', ')}
+                    `;
+                    getState(); // Auto-refresh state
+                } else {
+                    statusDiv.innerHTML = `<span class="error">✗ Error: ${JSON.stringify(data)}</span>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<span class="error">✗ Error: ${error.message}</span>`;
+            }
+        }
+
+        function startAutoRefresh() {
+            if (refreshInterval) return;
+            refreshInterval = setInterval(getState, 2000);
+            alert('Auto-refresh started (every 2 seconds)');
+        }
+
+        function stopAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+                alert('Auto-refresh stopped');
+            }
+        }
+
+        // Check health on load
+        checkHealth();
+    </script>
+</body>
+</html>

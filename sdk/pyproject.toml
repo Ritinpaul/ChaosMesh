@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chaosmesh-sdk"
+version = "0.2.0"
+description = "Python SDK for the ChaosMesh Arena multi-agent SRE training environment"
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = ["reinforcement-learning", "sre", "chaos-engineering", "multi-agent", "gymnasium"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "httpx>=0.27.0",
+    "pydantic>=2.7.0",
+]
+
+[project.optional-dependencies]
+gym = ["gymnasium>=0.29.0", "numpy>=1.26.0"]
+full = ["gymnasium>=0.29.0", "numpy>=1.26.0", "sb3>=2.3.0"]
+
+[project.urls]
+Homepage = "https://github.com/your-org/chaosmesh-arena"
+Repository = "https://github.com/your-org/chaosmesh-arena"
+Documentation = "https://chaosmesh.io/docs/sdk"
+"Bug Tracker" = "https://github.com/your-org/chaosmesh-arena/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["chaosmesh_sdk*"]

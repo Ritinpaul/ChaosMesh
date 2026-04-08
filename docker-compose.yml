@@ -1,0 +1,93 @@
+services:
+  # ── ChaosMesh Arena API Server ───────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: chaosmesh-app
+    ports:
+      - "8000:8000"
+    environment:
+      - CHAOSMESH_API_KEY=${CHAOSMESH_API_KEY:-cm_demo_change_me}
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.1:8b}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-openai/gpt-4o-mini}
+      - REDIS_URL=redis://redis:6379
+      - CHROMADB_PATH=/app/data/chromadb
+      - SQLITE_PATH=/app/data/sqlite/episodes.db
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8000
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - DEMO_MODE=${DEMO_MODE:-false}
+    volumes:
+      - chaosmesh-data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+  # ── Redis (message bus + LLM cache) ──────────────────────────────────────────
+  redis:
+    image: redis:7.2-alpine
+    container_name: chaosmesh-redis
+    ports:
+      - "6379:6379"
+    command: >
+      redis-server
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --save ""
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # ── Ollama (local LLM inference) ───────────────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: chaosmesh-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+    # ARM64 (OCI): this image has ARM native builds
+    # Pull model on first start:
+    #   docker exec chaosmesh-ollama ollama pull llama3.1:8b
+    restart: unless-stopped
+
+  # ── Model puller (one-shot, runs once on first start) ─────────────────────────
+  ollama-pull:
+    image: ollama/ollama:latest
+    container_name: chaosmesh-ollama-pull
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    entrypoint: >
+      sh -c "
+        echo 'Waiting for Ollama...' &&
+        sleep 10 &&
+        ollama pull ${OLLAMA_MODEL:-llama3.1:8b} &&
+        echo 'Model ready.'
+      "
+    restart: "no"
+
+volumes:
+  chaosmesh-data:
+    driver: local
+  ollama-models:
+    driver: local

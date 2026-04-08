@@ -8,10 +8,10 @@ Instantiate once via `get_settings()` and reuse everywhere.
 from __future__ import annotations
 
 import os
+import secrets
 from functools import lru_cache
-from typing import Annotated
 
-from pydantic import AnyHttpUrl, Field, field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -23,8 +23,26 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # ── Auth ─────────────────────────────────────────────
-    chaosmesh_api_key: str = Field(default="cm_demo_change_me", alias="CHAOSMESH_API_KEY")
+    # ── Auth — API Key (backward compatible) ────────────────
+    chaosmesh_api_key: str = Field(default="", alias="CHAOSMESH_API_KEY")
+
+    # ── Auth — JWT ──────────────────────────────────────────
+    # MUST be set in production — auto-generated default for local dev only
+    jwt_secret_key: str = Field(
+        default_factory=lambda: secrets.token_hex(32),
+        alias="JWT_SECRET_KEY",
+    )
+    jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
+    jwt_expire_hours: int = Field(default=24, alias="JWT_EXPIRE_HOURS")
+
+    # ── Database ─────────────────────────────────────────────
+    # SQLite for local dev; Postgres for production
+    database_url: str = Field(
+        default="sqlite+aiosqlite:///./data/sqlite/chaosmesh.db",
+        alias="DATABASE_URL",
+    )
+    # Postgres URL for production (takes priority over sqlite if set)
+    postgres_url: str = Field(default="", alias="POSTGRES_URL")
 
     # ── LLM — Ollama (primary) ────────────────────────────
     ollama_base_url: str = Field(default="http://localhost:11434", alias="OLLAMA_BASE_URL")
@@ -49,10 +67,16 @@ class Settings(BaseSettings):
     # ── Server ───────────────────────────────────────────
     server_host: str = Field(default="0.0.0.0", alias="SERVER_HOST")
     server_port: int = Field(default=8000, alias="SERVER_PORT")
+    # Strict CORS — no wildcard with credentials
     cors_origins: list[str] = Field(
-        default=["http://localhost:7860", "http://localhost:3000"],
+        default=["http://localhost:3000", "http://localhost:5173", "http://localhost:7860"],
         alias="CORS_ORIGINS",
     )
+
+    # ── Rate Limiting ────────────────────────────────────
+    rate_limit_default: str = Field(default="60/minute", alias="RATE_LIMIT_DEFAULT")
+    rate_limit_auth: str = Field(default="10/minute", alias="RATE_LIMIT_AUTH")
+    rate_limit_env: str = Field(default="30/minute", alias="RATE_LIMIT_ENV")
 
     # ── Episode limits ────────────────────────────────────
     max_episode_messages: int = Field(default=50, alias="MAX_EPISODE_MESSAGES")
@@ -60,6 +84,13 @@ class Settings(BaseSettings):
     max_sim_minutes: int = Field(default=15, alias="MAX_SIM_MINUTES")
     demo_fast_max_steps: int = Field(default=8, alias="DEMO_FAST_MAX_STEPS")
     demo_fast_wall_seconds: int = Field(default=20, alias="DEMO_FAST_WALL_SECONDS")
+
+    # ── EnvPool ───────────────────────────────────────────
+    max_concurrent_sessions: int = Field(default=50, alias="MAX_CONCURRENT_SESSIONS")
+    session_ttl_seconds: int = Field(default=1800, alias="SESSION_TTL_SECONDS")  # 30 min
+
+    # ── Plan limits ───────────────────────────────────────
+    free_plan_episodes_per_month: int = Field(default=100, alias="FREE_PLAN_EPISODES_PER_MONTH")
 
     # ── Fallback tuning ───────────────────────────────────
     ollama_timeout_demo_seconds: int = Field(default=8, alias="OLLAMA_TIMEOUT_DEMO_SECONDS")
@@ -81,6 +112,17 @@ class Settings(BaseSettings):
     @property
     def openrouter_available(self) -> bool:
         return bool(self.openrouter_api_key and not self.openrouter_api_key.startswith("sk-or-v1-REPLACE"))
+
+    @property
+    def effective_database_url(self) -> str:
+        """Return Postgres URL if configured, otherwise SQLite."""
+        if self.postgres_url:
+            return self.postgres_url
+        return self.database_url
+
+    @property
+    def api_key_configured(self) -> bool:
+        return bool(self.chaosmesh_api_key and self.chaosmesh_api_key != "cm_demo_change_me")
 
 
 @lru_cache(maxsize=1)

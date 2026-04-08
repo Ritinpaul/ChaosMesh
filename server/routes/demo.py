@@ -12,10 +12,9 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from chaosmesh_arena.auth.middleware import require_api_key
+from chaosmesh_arena.auth.middleware import require_auth
 from chaosmesh_arena.models import IncidentLevel, InjectRequest
 from chaosmesh_arena.templates.incident_registry import IncidentRegistry
-from server.routes.env import get_env
 from server.ws_manager import ws_manager
 
 router = APIRouter(prefix="/demo", tags=["demo"])
@@ -24,10 +23,11 @@ _PRECOMPUTED_MANIFEST = Path("data/sqlite/precomputed_scenarios.json")
 
 def _scenario_catalog() -> dict[str, dict]:
     """Return deterministic demo scenarios (one recommended per level + full list metadata)."""
-    env = get_env()
-    registry = getattr(env, "_registry", None)
-    if registry is None:
-        registry = IncidentRegistry(env._injector)
+    from chaosmesh_arena.sim.failure_injector import FailureInjector
+    from chaosmesh_arena.sim.cluster_state import ClusterStateMachine
+    cluster = ClusterStateMachine()
+    injector = FailureInjector(cluster)
+    registry = IncidentRegistry(injector)
 
     catalog: dict[str, dict] = {}
     recommended: dict[str, dict] = {}
@@ -76,14 +76,27 @@ def _scenario_catalog() -> dict[str, dict]:
 @router.post(
     "/inject",
     summary="Manually inject a scenario (for judges)",
-    dependencies=[Depends(require_api_key)],
+    dependencies=[Depends(require_auth)],
 )
 async def inject_scenario(request: InjectRequest) -> dict:
     """
     Inject a custom or pre-built incident scenario.
     The description is used to match the best template.
     """
-    env = get_env()
+    from chaosmesh_arena.env_pool import env_pool
+    from server.routes.env import _user_sessions
+    # For demo/inject we use a shared demo session if no user session exists
+    user_session = None
+    for uid, sid in _user_sessions.items():
+        user_session = sid
+        break
+    if user_session is None:
+        raise HTTPException(status_code=400, detail="No active episode. Call /env/reset first.")
+    # Access env directly for demo injection (admin operation)
+    entry = env_pool._sessions.get(user_session)
+    if not entry:
+        raise HTTPException(status_code=400, detail="No active episode. Call /env/reset first.")
+    env = entry.env
     if not env._episode_id:
         raise HTTPException(status_code=400, detail="No active episode. Call /env/reset first.")
 
@@ -132,7 +145,7 @@ async def inject_scenario(request: InjectRequest) -> dict:
 @router.get(
     "/scenarios",
     summary="List available demo scenarios",
-    dependencies=[Depends(require_api_key)],
+    dependencies=[Depends(require_auth)],
 )
 async def list_scenarios() -> dict:
     """Return all pre-built scenarios available for judge injection."""
@@ -147,7 +160,7 @@ async def list_scenarios() -> dict:
 @router.get(
     "/precomputed",
     summary="Get precomputed scenario manifest",
-    dependencies=[Depends(require_api_key)],
+    dependencies=[Depends(require_auth)],
 )
 async def precomputed_manifest() -> dict:
     if not _PRECOMPUTED_MANIFEST.exists():

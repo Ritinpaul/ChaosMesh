@@ -1,5 +1,16 @@
-"""chaosmesh_arena.auth — Authentication layer."""
+"""chaosmesh_arena.auth — Authentication and security layer."""
 
-from chaosmesh_arena.auth.middleware import APIKeyAuth, require_api_key, session_manager
+from chaosmesh_arena.auth.middleware import AuthenticatedUser, require_auth, require_pro, require_enterprise
+from chaosmesh_arena.auth.jwt_handler import create_access_token, decode_token, generate_api_key, hash_api_key, verify_api_key
 
-__all__ = ["APIKeyAuth", "require_api_key", "session_manager"]
+__all__ = [
+    "AuthenticatedUser",
+    "require_auth",
+    "require_pro",
+    "require_enterprise",
+    "create_access_token",
+    "decode_token",
+    "generate_api_key",
+    "hash_api_key",
+    "verify_api_key",
+]

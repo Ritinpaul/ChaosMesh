@@ -12,7 +12,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 # Shared config that serializes datetimes as ISO strings
@@ -272,10 +272,10 @@ class ActionModel(BaseModel):
     action_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     agent: AgentRole
     action_type: ActionType
-    target: str = ""                    # pod/service/node name
+    target: str = Field(default="", max_length=128)
     parameters: dict[str, Any] = Field(default_factory=dict)
     message: AgentMessage | None = None  # For SEND_MESSAGE actions
-    reasoning: str = ""                 # Agent's justification
+    reasoning: str = Field(default="", max_length=1000)
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
     # Safety — block unsafe actions at model level
@@ -283,6 +283,49 @@ class ActionModel(BaseModel):
         "delete_namespace", "drop_database", "truncate_table",
         "delete_pvc", "force_delete_node",
     })
+
+    @field_validator("target", mode="before")
+    @classmethod
+    def validate_target(cls, v: str) -> str:
+        """
+        Allowlist: Kubernetes resource names only.
+        Accepts: lowercase letters, digits, hyphens, dots, forward-slash (namespace/name).
+        Rejects: null bytes, path traversal, shell metacharacters, CRLF.
+        """
+        import re
+        if v is None:
+            return ""
+        v = str(v)
+        # Reject dangerous characters outright
+        DANGEROUS = ["\x00", "\n", "\r", "..", "%00", "`", "$", ";", "&", "|", ">", "<"]
+        for bad in DANGEROUS:
+            if bad in v:
+                raise ValueError(f"target contains forbidden sequence: {bad!r}")
+        # Allow empty string (not all actions need a target)
+        if v == "":
+            return v
+        # Kubernetes naming: lowercase alphanum, hyphens, dots, optional namespace prefix
+        if not re.fullmatch(r"[a-z0-9][a-z0-9\-\.\/]{0,127}", v):
+            raise ValueError(
+                "target must be a valid Kubernetes resource name "
+                "(lowercase letters, digits, hyphens, dots only)"
+            )
+        return v
+
+    @field_validator("parameters", mode="before")
+    @classmethod
+    def validate_parameters(cls, v: dict) -> dict:
+        """Limit parameter keys to known allowlist."""
+        ALLOWED_KEYS = {
+            "replicas", "image", "config_key", "config_value",
+            "timeout_seconds", "reason", "namespace",
+        }
+        if not isinstance(v, dict):
+            return {}
+        unknown = set(v.keys()) - ALLOWED_KEYS
+        if unknown:
+            raise ValueError(f"Unknown parameter keys: {unknown}")
+        return v
 
     def is_safe(self) -> bool:
         target_lower = self.target.lower()

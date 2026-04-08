@@ -170,6 +170,18 @@ if frontend_dist.exists():
 else:
     log.warning("react_frontend_not_found", path=str(frontend_dist))
 
+    @app.get("/", include_in_schema=False)
+    async def root_fallback():
+        """Fallback root when SPA bundle is unavailable in container."""
+        return {
+            "name": "ChaosMesh Arena",
+            "status": "backend-online",
+            "message": "React frontend bundle not found. Use /docs for API explorer.",
+            "docs": "/docs",
+            "health": "/health",
+            "metrics": "/metrics",
+        }
+
 
 # ── Health ────────────────────────────────────────────────────────────────────
 

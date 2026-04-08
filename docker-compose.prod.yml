@@ -1,0 +1,105 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: chaosmesh-app-prod
+    ports:
+      - "8000:8000"
+    environment:
+      - CHAOSMESH_API_KEY=${CHAOSMESH_API_KEY:-cm_prod_change_me}
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.1:8b}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-openai/gpt-4o-mini}
+      - REDIS_URL=redis://redis:6379
+      - CHROMADB_PATH=/app/data/chromadb
+      - SQLITE_PATH=/app/data/sqlite/episodes.db
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8000
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - DEMO_MODE=${DEMO_MODE:-false}
+    volumes:
+      - chromadb-data:/app/data/chromadb
+      - sqlite-data:/app/data/sqlite
+    depends_on:
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+      ollama-preload:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: chaosmesh-redis-prod
+    command: >
+      redis-server
+      --maxmemory 1gb
+      --maxmemory-policy allkeys-lru
+      --save ""
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: chaosmesh-ollama-prod
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 20s
+      timeout: 10s
+      retries: 15
+      start_period: 20s
+    restart: unless-stopped
+
+  # One-shot model preload service for production bootstrapping.
+  ollama-preload:
+    image: ollama/ollama:latest
+    container_name: chaosmesh-ollama-preload
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_PRELOAD_MODELS=${OLLAMA_PRELOAD_MODELS:-llama3.1:8b,mistral:7b}
+    entrypoint: >
+      sh -c '
+        set -e
+        echo "[ollama-preload] models: $${OLLAMA_PRELOAD_MODELS}";
+        for model in $(echo "$${OLLAMA_PRELOAD_MODELS}" | tr "," " "); do
+          echo "[ollama-preload] pulling $${model}";
+          ollama pull "$${model}";
+        done
+        echo "[ollama-preload] done";
+      '
+    restart: "no"
+
+volumes:
+  chromadb-data:
+    driver: local
+  sqlite-data:
+    driver: local
+  redis-data:
+    driver: local
+  ollama-models:
+    driver: local

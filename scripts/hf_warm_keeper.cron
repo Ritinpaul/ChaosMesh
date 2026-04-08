@@ -1,0 +1,8 @@
+# Example crontab entries for Phase 4.4 warm-keeper
+# Edit with: crontab -e
+
+# Every 4 minutes (recommended for free-tier Space)
+*/4 * * * * cd /path/to/chaosmesh-arena && /usr/bin/python3 scripts/hf_warm_keeper.py --once >> /tmp/hf_warm_keeper.log 2>&1
+
+# Alternate: every 5 minutes
+# */5 * * * * cd /path/to/chaosmesh-arena && /usr/bin/python3 scripts/hf_warm_keeper.py --once >> /tmp/hf_warm_keeper.log 2>&1

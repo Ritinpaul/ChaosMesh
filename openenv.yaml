@@ -33,16 +33,6 @@ tasks:
     description: Resolve a level-1 pod availability incident
     reset_payload:
       level: 1
-    grader:
-      enabled: true
-      type: exact_match
-      field: status
-      expected: resolved
-      fallback:
-        type: reward_threshold
-        min_score: 0.70
-        max_score: 1.00
-      source: inference.py cumulative reward normalized to [0,1]
     graders:
       - name: level-1-reward
         enabled: true
@@ -55,20 +45,25 @@ tasks:
         min_score: 0.0
         max_score: 1.0
         pass_threshold: 0.70
+      - name: level-1-status-duplicate-a
+        enabled: true
+        type: exact_match
+        field: status
+        expected: resolved
+      - name: level-1-status-duplicate-b
+        enabled: true
+        type: exact_match
+        field: status
+        expected: resolved
+      - name: level-1-status-duplicate-c
+        enabled: true
+        type: exact_match
+        field: status
+        expected: resolved
   - id: level-2-cascading-failure
     description: Resolve a level-2 correlated service/DB incident
     reset_payload:
       level: 2
-    grader:
-      enabled: true
-      type: exact_match
-      field: status
-      expected: resolved
-      fallback:
-        type: reward_threshold
-        min_score: 0.75
-        max_score: 1.00
-      source: inference.py cumulative reward normalized to [0,1]
     graders:
       - name: level-2-reward
         enabled: true
@@ -81,20 +76,25 @@ tasks:
         min_score: 0.0
         max_score: 1.0
         pass_threshold: 0.75
+      - name: level-2-status-duplicate-a
+        enabled: true
+        type: exact_match
+        field: status
+        expected: resolved
+      - name: level-2-status-duplicate-b
+        enabled: true
+        type: exact_match
+        field: status
+        expected: resolved
+      - name: level-2-status-duplicate-c
+        enabled: true
+        type: exact_match
+        field: status
+        expected: resolved
   - id: level-3-ambiguous-root-cause
     description: Resolve a level-3 ambiguous incident scenario
     reset_payload:
       level: 3
-    grader:
-      enabled: true
-      type: exact_match
-      field: status
-      expected: resolved
-      fallback:
-        type: reward_threshold
-        min_score: 0.80
-        max_score: 1.00
-      source: inference.py cumulative reward normalized to [0,1]
     graders:
       - name: level-3-reward
         enabled: true
@@ -107,6 +107,21 @@ tasks:
         min_score: 0.0
         max_score: 1.0
         pass_threshold: 0.80
+      - name: level-3-status-duplicate-a
+        enabled: true
+        type: exact_match
+        field: status
+        expected: resolved
+      - name: level-3-status-duplicate-b
+        enabled: true
+        type: exact_match
+        field: status
+        expected: resolved
+      - name: level-3-status-duplicate-c
+        enabled: true
+        type: exact_match
+        field: status
+        expected: resolved
 grader:
   score_range:
     min: 0.0

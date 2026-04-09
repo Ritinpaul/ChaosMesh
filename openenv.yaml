@@ -1,0 +1,119 @@
+name: chaosmesh-arena
+version: 0.2.0
+description: Multi-agent adversarial SRE training environment for OpenEnv
+environment_type: rl
+api:
+  base_path: /
+  endpoints:
+    reset:
+      method: POST
+      path: /reset
+    step:
+      method: POST
+      path: /step
+    state:
+      method: GET
+      path: /state
+models:
+  typed: true
+  implementation: pydantic
+  action_model: chaosmesh_arena.models.ActionModel
+  observation_model: chaosmesh_arena.models.ObservationModel
+  step_result_model: chaosmesh_arena.models.StepResult
+  full_state_model: chaosmesh_arena.models.FullStateModel
+inference:
+  script: inference.py
+  llm_client: openai
+  required_env:
+    - API_BASE_URL
+    - MODEL_NAME
+    - HF_TOKEN
+tasks:
+  - id: level-1-pod-failure
+    description: Resolve a level-1 pod availability incident
+    reset_payload:
+      level: 1
+    grader:
+      enabled: true
+      type: exact_match
+      field: status
+      expected: resolved
+      fallback:
+        type: reward_threshold
+        min_score: 0.70
+        max_score: 1.00
+      source: inference.py cumulative reward normalized to [0,1]
+    graders:
+      - name: level-1-reward
+        enabled: true
+        type: exact_match
+        field: status
+        expected: resolved
+      - name: level-1-threshold
+        enabled: true
+        type: reward_threshold
+        min_score: 0.0
+        max_score: 1.0
+        pass_threshold: 0.70
+  - id: level-2-cascading-failure
+    description: Resolve a level-2 correlated service/DB incident
+    reset_payload:
+      level: 2
+    grader:
+      enabled: true
+      type: exact_match
+      field: status
+      expected: resolved
+      fallback:
+        type: reward_threshold
+        min_score: 0.75
+        max_score: 1.00
+      source: inference.py cumulative reward normalized to [0,1]
+    graders:
+      - name: level-2-reward
+        enabled: true
+        type: exact_match
+        field: status
+        expected: resolved
+      - name: level-2-threshold
+        enabled: true
+        type: reward_threshold
+        min_score: 0.0
+        max_score: 1.0
+        pass_threshold: 0.75
+  - id: level-3-ambiguous-root-cause
+    description: Resolve a level-3 ambiguous incident scenario
+    reset_payload:
+      level: 3
+    grader:
+      enabled: true
+      type: exact_match
+      field: status
+      expected: resolved
+      fallback:
+        type: reward_threshold
+        min_score: 0.80
+        max_score: 1.00
+      source: inference.py cumulative reward normalized to [0,1]
+    graders:
+      - name: level-3-reward
+        enabled: true
+        type: exact_match
+        field: status
+        expected: resolved
+      - name: level-3-threshold
+        enabled: true
+        type: reward_threshold
+        min_score: 0.0
+        max_score: 1.0
+        pass_threshold: 0.80
+grader:
+  score_range:
+    min: 0.0
+    max: 1.0
+  source: episode cumulative reward normalized in inference.py
+runtime:
+  max_runtime_minutes: 20
+  constraints:
+    vcpu: 2
+    memory_gb: 8

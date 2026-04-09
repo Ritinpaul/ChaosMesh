@@ -34,15 +34,24 @@ tasks:
     reset_payload:
       level: 1
     grader:
-      type: normalized_episode_reward
-      score_range:
-        min: 0.0
-        max: 1.0
-      success_threshold: 0.70
+      enabled: true
+      type: exact_match
+      field: status
+      expected: resolved
+      fallback:
+        type: reward_threshold
+        min_score: 0.70
+        max_score: 1.00
       source: inference.py cumulative reward normalized to [0,1]
     graders:
       - name: level-1-reward
-        type: reward
+        enabled: true
+        type: exact_match
+        field: status
+        expected: resolved
+      - name: level-1-threshold
+        enabled: true
+        type: reward_threshold
         min_score: 0.0
         max_score: 1.0
         pass_threshold: 0.70
@@ -51,15 +60,24 @@ tasks:
     reset_payload:
       level: 2
     grader:
-      type: normalized_episode_reward
-      score_range:
-        min: 0.0
-        max: 1.0
-      success_threshold: 0.75
+      enabled: true
+      type: exact_match
+      field: status
+      expected: resolved
+      fallback:
+        type: reward_threshold
+        min_score: 0.75
+        max_score: 1.00
       source: inference.py cumulative reward normalized to [0,1]
     graders:
       - name: level-2-reward
-        type: reward
+        enabled: true
+        type: exact_match
+        field: status
+        expected: resolved
+      - name: level-2-threshold
+        enabled: true
+        type: reward_threshold
         min_score: 0.0
         max_score: 1.0
         pass_threshold: 0.75
@@ -68,15 +86,24 @@ tasks:
     reset_payload:
       level: 3
     grader:
-      type: normalized_episode_reward
-      score_range:
-        min: 0.0
-        max: 1.0
-      success_threshold: 0.80
+      enabled: true
+      type: exact_match
+      field: status
+      expected: resolved
+      fallback:
+        type: reward_threshold
+        min_score: 0.80
+        max_score: 1.00
       source: inference.py cumulative reward normalized to [0,1]
     graders:
       - name: level-3-reward
-        type: reward
+        enabled: true
+        type: exact_match
+        field: status
+        expected: resolved
+      - name: level-3-threshold
+        enabled: true
+        type: reward_threshold
         min_score: 0.0
         max_score: 1.0
         pass_threshold: 0.80

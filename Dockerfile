@@ -15,6 +15,10 @@ RUN pip install --no-cache-dir uv
 COPY README.md pyproject.toml ./
 COPY chaosmesh_arena/ ./chaosmesh_arena/
 COPY server/ ./server/
+COPY graders.py ./graders.py
+COPY inference.py ./inference.py
+COPY environment.py ./environment.py
+COPY openenv.yaml ./openenv.yaml
 
 # Install all dependencies into a virtual env
 RUN uv venv /app/.venv --python 3.11
@@ -39,6 +43,10 @@ COPY --from=builder /app/.venv /app/.venv
 # Copy application code from builder
 COPY --from=builder /app/chaosmesh_arena ./chaosmesh_arena/
 COPY --from=builder /app/server ./server/
+COPY --from=builder /app/graders.py ./graders.py
+COPY --from=builder /app/inference.py ./inference.py
+COPY --from=builder /app/environment.py ./environment.py
+COPY --from=builder /app/openenv.yaml ./openenv.yaml
 COPY --from=builder /app/pyproject.toml ./pyproject.toml
 COPY --from=builder /app/README.md ./README.md
 

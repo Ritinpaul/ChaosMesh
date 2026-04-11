@@ -174,14 +174,10 @@ else:
 
     @app.get("/", include_in_schema=False)
     async def root_fallback():
-        """Fallback root when SPA bundle is unavailable in container."""
+        """OpenEnv-standard root endpoint — used by validators to discover endpoints."""
         return {
-            "name": "ChaosMesh Arena",
-            "status": "backend-online",
-            "message": "React frontend bundle not found. Use /docs for API explorer.",
-            "docs": "/docs",
-            "health": "/health",
-            "metrics": "/metrics",
+            "status": "ok",
+            "endpoints": ["/reset", "/step", "/state", "/tasks", "/grader"],
         }
 
 

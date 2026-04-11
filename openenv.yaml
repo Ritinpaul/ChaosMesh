@@ -34,94 +34,64 @@ tasks:
     reset_payload:
       level: 1
     graders:
-      - name: level-1-reward
+      - name: level-1-resolved
         enabled: true
         type: exact_match
-        field: status
-        expected: resolved
+        field: terminated
+        expected: true
+      - name: level-1-not-timed-out
+        enabled: true
+        type: exact_match
+        field: truncated
+        expected: false
       - name: level-1-threshold
         enabled: true
         type: reward_threshold
         min_score: 0.0
         max_score: 1.0
         pass_threshold: 0.70
-      - name: level-1-status-duplicate-a
-        enabled: true
-        type: exact_match
-        field: status
-        expected: resolved
-      - name: level-1-status-duplicate-b
-        enabled: true
-        type: exact_match
-        field: status
-        expected: resolved
-      - name: level-1-status-duplicate-c
-        enabled: true
-        type: exact_match
-        field: status
-        expected: resolved
   - id: level-2-cascading-failure
     description: Resolve a level-2 correlated service/DB incident
     reset_payload:
       level: 2
     graders:
-      - name: level-2-reward
+      - name: level-2-resolved
         enabled: true
         type: exact_match
-        field: status
-        expected: resolved
+        field: terminated
+        expected: true
+      - name: level-2-not-timed-out
+        enabled: true
+        type: exact_match
+        field: truncated
+        expected: false
       - name: level-2-threshold
         enabled: true
         type: reward_threshold
         min_score: 0.0
         max_score: 1.0
         pass_threshold: 0.75
-      - name: level-2-status-duplicate-a
-        enabled: true
-        type: exact_match
-        field: status
-        expected: resolved
-      - name: level-2-status-duplicate-b
-        enabled: true
-        type: exact_match
-        field: status
-        expected: resolved
-      - name: level-2-status-duplicate-c
-        enabled: true
-        type: exact_match
-        field: status
-        expected: resolved
   - id: level-3-ambiguous-root-cause
     description: Resolve a level-3 ambiguous incident scenario
     reset_payload:
       level: 3
     graders:
-      - name: level-3-reward
+      - name: level-3-resolved
         enabled: true
         type: exact_match
-        field: status
-        expected: resolved
+        field: terminated
+        expected: true
+      - name: level-3-not-timed-out
+        enabled: true
+        type: exact_match
+        field: truncated
+        expected: false
       - name: level-3-threshold
         enabled: true
         type: reward_threshold
         min_score: 0.0
         max_score: 1.0
         pass_threshold: 0.80
-      - name: level-3-status-duplicate-a
-        enabled: true
-        type: exact_match
-        field: status
-        expected: resolved
-      - name: level-3-status-duplicate-b
-        enabled: true
-        type: exact_match
-        field: status
-        expected: resolved
-      - name: level-3-status-duplicate-c
-        enabled: true
-        type: exact_match
-        field: status
-        expected: resolved
 grader:
   score_range:
     min: 0.0

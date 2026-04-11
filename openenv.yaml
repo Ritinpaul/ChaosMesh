@@ -5,20 +5,20 @@ runtime: fastapi
 app: server.main:app
 port: 8000
 version: 0.2.0
-entry_point: chaosmesh_arena.env:ChaosMeshArenaEnv
+entry_point: environment:ChaosMeshArenaEnv
 
 api:
   base_url: /
   endpoints:
     reset:
       method: POST
-      path: /env/reset
+      path: /reset
     step:
       method: POST
-      path: /env/step
+      path: /step
     state:
       method: GET
-      path: /env/state
+      path: /state
     tasks:
       method: GET
       path: /tasks

@@ -1,10 +1,22 @@
+---
+title: ChaosMesh Arena
+emoji: ⚡
+colorFrom: indigo
+colorTo: gray
+sdk: docker
+app_port: 8000
+pinned: false
+tags:
+  - openenv
+---
+
 <div align="center">
 
 # ⚡ ChaosMesh Arena
 
 **Multi-agent adversarial SRE training environment for OpenEnv**
 
-A Gymnasium-compatible benchmark where five specialized AI agents collaboratively diagnose and remediate injected Kubernetes failures driven by an LLM Chaos Engine, evaluated by a curriculum FSM, and fully observable through a real-time React dashboard.
+A Gymnasium-compatible benchmark where five specialized AI agents collaboratively diagnose and remediate injected Kubernetes failures — driven by an LLM Chaos Engine, evaluated by a curriculum FSM, and fully observable through a real-time React dashboard.
 
 [![OpenEnv RFC](https://img.shields.io/badge/OpenEnv-RFC%20001%2F002%2F003-4F46E5?style=flat-square)](https://github.com/openenv)
 [![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
@@ -464,7 +476,7 @@ For large changes (new incident levels, new agent roles, new LLM backends), plea
 
 ## License
 
-This project is licensed under the **MIT License** — see [LICENSE](LICENSE) for details.
+This project is licensed under the **MIT License**
 
 ---
 
@@ -473,3 +485,4 @@ This project is licensed under the **MIT License** — see [LICENSE](LICENSE) fo
 Built for the **OpenEnv Hackathon** · Powered by [Hugging Face](https://huggingface.co) · [FastAPI](https://fastapi.tiangolo.com) · [Gymnasium](https://gymnasium.farama.org)
 
 </div>
+

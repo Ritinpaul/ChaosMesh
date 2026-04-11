@@ -37,12 +37,12 @@ inference:
 tasks:
   - id: sre-pod-crashloop
     task_id: sre-pod-crashloop
-    name: Pod CrashLoop Recovery
+    name: pod-crashloop-recovery
     difficulty: easy
     description: A critical pod is in CrashLoopBackOff. Diagnose root cause and restore service.
     max_steps: 8
     reset_params:
-      level: 1
+      task_id: 0
     action_schema:
       action_type: restart_pod | get_logs | describe_pod | declare_resolved
       agent: incident_commander | diagnostics | remediation
@@ -55,12 +55,12 @@ tasks:
 
   - id: sre-db-timeout
     task_id: sre-db-timeout
-    name: Cascading DB Timeout
+    name: cascading-db-timeout
     difficulty: medium
     description: Database timeouts are causing cascading failures. Identify and remediate.
     max_steps: 8
     reset_params:
-      level: 2
+      task_id: 1
     action_schema:
       action_type: query_db_stats | query_metrics | scale_deployment | declare_resolved
       agent: incident_commander | diagnostics | database
@@ -73,12 +73,12 @@ tasks:
 
   - id: sre-high-latency
     task_id: sre-high-latency
-    name: Service High Latency
+    name: service-high-latency
     difficulty: medium
-    description: Auth service experiencing >2s P99 latency. Find the bottleneck and fix it.
+    description: Auth service experiencing high P99 latency. Find the bottleneck and fix it.
     max_steps: 8
     reset_params:
-      level: 2
+      task_id: 2
     action_schema:
       action_type: query_metrics | query_traces | scale_deployment | declare_resolved
       agent: incident_commander | diagnostics | remediation
@@ -91,12 +91,12 @@ tasks:
 
   - id: sre-node-pressure
     task_id: sre-node-pressure
-    name: Node Memory Pressure
+    name: node-memory-pressure
     difficulty: hard
     description: A node is under memory pressure and evicting pods. Stabilize the cluster.
     max_steps: 8
     reset_params:
-      level: 3
+      task_id: 3
     action_schema:
       action_type: describe_node | drain_node | scale_deployment | declare_resolved
       agent: incident_commander | diagnostics | remediation
@@ -109,12 +109,12 @@ tasks:
 
   - id: sre-security-anomaly
     task_id: sre-security-anomaly
-    name: Ambiguous Attack vs Misconfiguration
+    name: ambiguous-attack-vs-misconfig
     difficulty: hard
-    description: Unusual traffic patterns. Determine if this is an attack or misconfiguration.
+    description: Unusual traffic patterns detected. Determine if this is an attack or misconfiguration.
     max_steps: 8
     reset_params:
-      level: 3
+      task_id: 4
     action_schema:
       action_type: scan_traffic | query_metrics | isolate_pod | declare_resolved
       agent: incident_commander | diagnostics | security
@@ -127,12 +127,12 @@ tasks:
 
   - id: sre-compound-chaos
     task_id: sre-compound-chaos
-    name: Compound Chaos Event
+    name: compound-chaos-event
     difficulty: hard
     description: Multiple simultaneous failures - node down, service degraded, pod crashlooping.
     max_steps: 10
     reset_params:
-      level: 5
+      task_id: 5
     action_schema:
       action_type: describe_node | restart_pod | rollback_deployment | declare_resolved
       agent: incident_commander | diagnostics | remediation | security

@@ -36,14 +36,14 @@ tasks:
     graders:
       - name: level-1-resolved
         enabled: true
-        type: exact_match
+        type: string_match
         field: terminated
-        expected: true
+        expected: "true"
       - name: level-1-not-timed-out
         enabled: true
-        type: exact_match
+        type: string_match
         field: truncated
-        expected: false
+        expected: "false"
       - name: level-1-threshold
         enabled: true
         type: reward_threshold
@@ -57,14 +57,14 @@ tasks:
     graders:
       - name: level-2-resolved
         enabled: true
-        type: exact_match
+        type: string_match
         field: terminated
-        expected: true
+        expected: "true"
       - name: level-2-not-timed-out
         enabled: true
-        type: exact_match
+        type: string_match
         field: truncated
-        expected: false
+        expected: "false"
       - name: level-2-threshold
         enabled: true
         type: reward_threshold
@@ -78,14 +78,14 @@ tasks:
     graders:
       - name: level-3-resolved
         enabled: true
-        type: exact_match
+        type: string_match
         field: terminated
-        expected: true
+        expected: "true"
       - name: level-3-not-timed-out
         enabled: true
-        type: exact_match
+        type: string_match
         field: truncated
-        expected: false
+        expected: "false"
       - name: level-3-threshold
         enabled: true
         type: reward_threshold

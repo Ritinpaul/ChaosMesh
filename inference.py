@@ -26,17 +26,35 @@ API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 
 # ── Episode config ─────────────────────────────────────────────────────────────
-TASK_NAME = os.getenv("CHAOSMESH_TASK", "sre-incident-response")
+TASK_NAME = os.getenv("CHAOSMESH_TASK", "sre-pod-crashloop")
 BENCHMARK = os.getenv("CHAOSMESH_BENCHMARK", "chaosmesh_arena")
 MAX_STEPS = int(os.getenv("MAX_STEPS", "8"))
 TEMPERATURE = float(os.getenv("TEMPERATURE", "0.7"))
 MAX_TOKENS = int(os.getenv("MAX_TOKENS", "512"))
 SUCCESS_SCORE_THRESHOLD = 0.1  # score ∈ [0, 1]
 
+# Map task_id → incident level (multi-task evaluator support)
+TASK_LEVEL_MAP = {
+    "sre-pod-crashloop": 1,
+    "sre-db-timeout": 2,
+    "sre-high-latency": 2,
+    "sre-node-pressure": 3,
+    "sre-security-anomaly": 3,
+    "sre-compound-chaos": 5,
+    # Legacy task IDs (backward-compat)
+    "level-1-pod-failure": 1,
+    "level_1_pod_failure": 1,
+    "level-2-cascading-failure": 2,
+    "level_2_cascading_failure": 2,
+    "level-3-ambiguous-root-cause": 3,
+    "level_3_ambiguous_root_cause": 3,
+}
+
 # Maximum possible reward per episode (used for normalisation)
 # RewardCalculator gives up to +5 per step for a perfect response
 _MAX_REWARD_PER_STEP = 5.0
 MAX_TOTAL_REWARD = MAX_STEPS * _MAX_REWARD_PER_STEP
+
 
 
 # ── Logging helpers (MANDATORY stdout format) ──────────────────────────────────
@@ -169,7 +187,10 @@ def main() -> None:
     from chaosmesh_arena.models import ActionModel, ActionType, AgentRole, IncidentLevel
 
     client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
-    env = ChaosMeshArenaEnv(level=IncidentLevel.LEVEL_1, demo_mode=True)
+
+    # Determine incident level from task_id (multi-task evaluator support)
+    level_int = TASK_LEVEL_MAP.get(TASK_NAME, 1)
+    env = ChaosMeshArenaEnv(level=IncidentLevel(level_int), demo_mode=True)
 
     history: List[str] = []
     rewards: List[float] = []
@@ -180,7 +201,7 @@ def main() -> None:
     log_start(task=TASK_NAME, env=BENCHMARK, model=MODEL_NAME)
 
     try:
-        obs, _info = env.reset(options={"level": 1})
+        obs, _info = env.reset(options={"level": level_int})
         obs_dict = obs.model_dump(mode="json")
         last_reward = 0.0
 

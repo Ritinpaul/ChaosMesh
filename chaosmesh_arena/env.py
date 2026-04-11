@@ -44,6 +44,135 @@ from chaosmesh_arena.templates.incident_registry import IncidentRegistry
 log = structlog.get_logger(__name__)
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Task definitions — required for OpenEnv Phase 2 Task Validation
+# The evaluator loads openenv.yaml, resolves entry_point → ChaosMeshArenaEnv,
+# then calls env.get_tasks() to count tasks with graders.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+CHAOSMESH_TASKS = [
+    {
+        "task_id": "sre-pod-crashloop",
+        "name": "Pod CrashLoop Recovery",
+        "description": "A critical pod is in CrashLoopBackOff. Diagnose root cause and restore service.",
+        "level": 1,
+        "difficulty": "easy",
+        "grader": {
+            "type": "function",
+            "module": "graders",
+            "function": "grade_task_0",
+            "ref": "graders:grade_task_0",
+            "criteria": ["declare_resolved", "restart_pod", "describe_pod"],
+        },
+    },
+    {
+        "task_id": "sre-db-timeout",
+        "name": "Cascading DB Timeout",
+        "description": "Database timeouts are causing cascading failures. Identify and remediate.",
+        "level": 2,
+        "difficulty": "medium",
+        "grader": {
+            "type": "function",
+            "module": "graders",
+            "function": "grade_task_1",
+            "ref": "graders:grade_task_1",
+            "criteria": ["query_db_stats", "query_metrics", "declare_resolved"],
+        },
+    },
+    {
+        "task_id": "sre-high-latency",
+        "name": "Service High Latency",
+        "description": "Auth service experiencing >2s P99 latency. Find the bottleneck and fix it.",
+        "level": 2,
+        "difficulty": "medium",
+        "grader": {
+            "type": "function",
+            "module": "graders",
+            "function": "grade_task_1",
+            "ref": "graders:grade_task_1",
+            "criteria": ["query_metrics", "query_traces", "scale_deployment"],
+        },
+    },
+    {
+        "task_id": "sre-node-pressure",
+        "name": "Node Memory Pressure",
+        "description": "A node is under memory pressure and evicting pods. Stabilize the cluster.",
+        "level": 3,
+        "difficulty": "hard",
+        "grader": {
+            "type": "function",
+            "module": "graders",
+            "function": "grade_task_2",
+            "ref": "graders:grade_task_2",
+            "criteria": ["describe_node", "drain_node", "scale_deployment"],
+        },
+    },
+    {
+        "task_id": "sre-security-anomaly",
+        "name": "Ambiguous Attack vs Misconfiguration",
+        "description": "Unusual traffic patterns detected. Determine if this is attack or misconfiguration.",
+        "level": 3,
+        "difficulty": "hard",
+        "grader": {
+            "type": "function",
+            "module": "graders",
+            "function": "grade_task_2",
+            "ref": "graders:grade_task_2",
+            "criteria": ["scan_traffic", "query_metrics", "isolate_pod"],
+        },
+    },
+    {
+        "task_id": "sre-compound-chaos",
+        "name": "Compound Chaos Event",
+        "description": "Multiple simultaneous failures: node down, service degraded, pod crashlooping.",
+        "level": 5,
+        "difficulty": "hard",
+        "grader": {
+            "type": "function",
+            "module": "graders",
+            "function": "grade_task_2",
+            "ref": "graders:grade_task_2",
+            "criteria": ["describe_node", "restart_pod", "rollback_deployment", "declare_resolved"],
+        },
+    },
+]
+
+
+def grade_episode(trajectory: list, task: dict) -> float:
+    """
+    Score a completed episode trajectory against a task's grader criteria.
+    Returns a float in [0.0, 1.0].
+
+    Also used as the grader callable when the evaluator calls:
+        graders.grade_task_0(state, reward)
+    """
+    if not trajectory:
+        return 0.0
+
+    criteria = task.get("grader", {}).get("criteria", [])
+    action_types_used = {step.get("action_type", "") for step in trajectory}
+    rewards = [step.get("reward", 0.0) for step in trajectory]
+
+    # Criterion 1: Did agent use relevant action types? (40%)
+    if criteria:
+        matched = sum(1 for c in criteria if c in action_types_used)
+        criteria_score = matched / len(criteria)
+    else:
+        criteria_score = 1.0
+
+    # Criterion 2: Was the incident declared resolved? (40%)
+    resolved = any(step.get("action_type") == "declare_resolved" for step in trajectory)
+    resolved_score = 1.0 if resolved else 0.0
+
+    # Criterion 3: Normalised cumulative reward (20%)
+    total_reward = sum(r for r in rewards if isinstance(r, (int, float)))
+    max_possible = len(trajectory) * 5.0
+    reward_score = min(max(total_reward / max_possible, 0.0), 1.0) if max_possible > 0 else 0.0
+
+    return round(0.4 * criteria_score + 0.4 * resolved_score + 0.2 * reward_score, 4)
+
+
+
 class ChaosMeshArenaEnv(gym.Env):
     """
     ChaosMesh Arena — Multi-agent adversarial SRE training environment.
@@ -349,6 +478,48 @@ class ChaosMeshArenaEnv(gym.Env):
     def belief_tracker(self) -> BeliefTracker:
         """Expose belief tracker for agent wiring."""
         return self._belief_tracker
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # OpenEnv Phase 2 — Task Validation API (REQUIRED)
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    def get_tasks(self) -> list:
+        """
+        OpenEnv Phase 2 required method.
+
+        The AgentBeats evaluator imports/instantiates this class and calls
+        get_tasks() to count tasks that have graders.  Must return >= 5 tasks,
+        each with a populated 'grader' key.
+
+        Returns:
+            List of task dicts, each containing task_id, name, description,
+            level, difficulty, and grader (module/function/criteria).
+        """
+        return CHAOSMESH_TASKS
+
+    def evaluate_trajectory(self, task_id: str, trajectory: list) -> dict:
+        """
+        Grade a completed trajectory against the specified task.
+
+        Called by the AgentBeats evaluator after an episode ends.
+
+        Args:
+            task_id: one of the task_ids from get_tasks()
+            trajectory: list of {step, action_type, reward, done} dicts
+
+        Returns:
+            {"score": float, "task_id": str, "graded": True}
+        """
+        task = next((t for t in CHAOSMESH_TASKS if t["task_id"] == task_id), None)
+        if task is None:
+            return {
+                "score": 0.0,
+                "task_id": task_id,
+                "graded": False,
+                "error": "unknown task_id",
+            }
+        score = grade_episode(trajectory, task)
+        return {"score": score, "task_id": task_id, "graded": True}
 
     # ═══════════════════════════════════════════════════════════════════════════
     # Internal Helpers

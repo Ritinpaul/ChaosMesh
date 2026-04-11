@@ -1,26 +1,31 @@
+spec_version: 1
 name: chaosmesh-arena
+type: space
+runtime: fastapi
+app: server.main:app
+port: 8000
 version: 0.2.0
-description: Multi-agent adversarial SRE training environment for OpenEnv
-environment_type: rl
+entry_point: chaosmesh_arena.env:ChaosMeshArenaEnv
+
 api:
-  base_path: /
+  base_url: /
   endpoints:
     reset:
       method: POST
-      path: /reset
+      path: /env/reset
     step:
       method: POST
-      path: /step
+      path: /env/step
     state:
       method: GET
-      path: /state
-models:
-  typed: true
-  implementation: pydantic
-  action_model: chaosmesh_arena.models.ActionModel
-  observation_model: chaosmesh_arena.models.ObservationModel
-  step_result_model: chaosmesh_arena.models.StepResult
-  full_state_model: chaosmesh_arena.models.FullStateModel
+      path: /env/state
+    tasks:
+      method: GET
+      path: /tasks
+    grader:
+      method: POST
+      path: /grader
+
 inference:
   script: inference.py
   llm_client: openai
@@ -28,77 +33,112 @@ inference:
     - API_BASE_URL
     - MODEL_NAME
     - HF_TOKEN
+
 tasks:
-  - id: level-1-pod-failure
-    description: Resolve a level-1 pod availability incident
-    reset_payload:
+  - id: sre-pod-crashloop
+    task_id: sre-pod-crashloop
+    name: Pod CrashLoop Recovery
+    difficulty: easy
+    description: A critical pod is in CrashLoopBackOff. Diagnose root cause and restore service.
+    max_steps: 8
+    reset_params:
       level: 1
+    action_schema:
+      action_type: restart_pod | get_logs | describe_pod | declare_resolved
+      agent: incident_commander | diagnostics | remediation
+    grader: graders:grade_task_0
     graders:
-      - name: level-1-resolved
-        enabled: true
-        type: string_match
-        field: terminated
-        expected: "true"
-      - name: level-1-not-timed-out
-        enabled: true
-        type: string_match
-        field: truncated
-        expected: "false"
-      - name: level-1-threshold
-        enabled: true
-        type: reward_threshold
-        min_score: 0.0
-        max_score: 1.0
-        pass_threshold: 0.70
-  - id: level-2-cascading-failure
-    description: Resolve a level-2 correlated service/DB incident
-    reset_payload:
+      - graders:grade_task_0
+    reward_range:
+      - 0.0
+      - 1.0
+
+  - id: sre-db-timeout
+    task_id: sre-db-timeout
+    name: Cascading DB Timeout
+    difficulty: medium
+    description: Database timeouts are causing cascading failures. Identify and remediate.
+    max_steps: 8
+    reset_params:
       level: 2
+    action_schema:
+      action_type: query_db_stats | query_metrics | scale_deployment | declare_resolved
+      agent: incident_commander | diagnostics | database
+    grader: graders:grade_task_1
     graders:
-      - name: level-2-resolved
-        enabled: true
-        type: string_match
-        field: terminated
-        expected: "true"
-      - name: level-2-not-timed-out
-        enabled: true
-        type: string_match
-        field: truncated
-        expected: "false"
-      - name: level-2-threshold
-        enabled: true
-        type: reward_threshold
-        min_score: 0.0
-        max_score: 1.0
-        pass_threshold: 0.75
-  - id: level-3-ambiguous-root-cause
-    description: Resolve a level-3 ambiguous incident scenario
-    reset_payload:
+      - graders:grade_task_1
+    reward_range:
+      - 0.0
+      - 1.0
+
+  - id: sre-high-latency
+    task_id: sre-high-latency
+    name: Service High Latency
+    difficulty: medium
+    description: Auth service experiencing >2s P99 latency. Find the bottleneck and fix it.
+    max_steps: 8
+    reset_params:
+      level: 2
+    action_schema:
+      action_type: query_metrics | query_traces | scale_deployment | declare_resolved
+      agent: incident_commander | diagnostics | remediation
+    grader: graders:grade_task_1
+    graders:
+      - graders:grade_task_1
+    reward_range:
+      - 0.0
+      - 1.0
+
+  - id: sre-node-pressure
+    task_id: sre-node-pressure
+    name: Node Memory Pressure
+    difficulty: hard
+    description: A node is under memory pressure and evicting pods. Stabilize the cluster.
+    max_steps: 8
+    reset_params:
       level: 3
+    action_schema:
+      action_type: describe_node | drain_node | scale_deployment | declare_resolved
+      agent: incident_commander | diagnostics | remediation
+    grader: graders:grade_task_2
     graders:
-      - name: level-3-resolved
-        enabled: true
-        type: string_match
-        field: terminated
-        expected: "true"
-      - name: level-3-not-timed-out
-        enabled: true
-        type: string_match
-        field: truncated
-        expected: "false"
-      - name: level-3-threshold
-        enabled: true
-        type: reward_threshold
-        min_score: 0.0
-        max_score: 1.0
-        pass_threshold: 0.80
-grader:
-  score_range:
-    min: 0.0
-    max: 1.0
-  source: episode cumulative reward normalized in inference.py
-runtime:
-  max_runtime_minutes: 20
-  constraints:
-    vcpu: 2
-    memory_gb: 8
+      - graders:grade_task_2
+    reward_range:
+      - 0.0
+      - 1.0
+
+  - id: sre-security-anomaly
+    task_id: sre-security-anomaly
+    name: Ambiguous Attack vs Misconfiguration
+    difficulty: hard
+    description: Unusual traffic patterns. Determine if this is an attack or misconfiguration.
+    max_steps: 8
+    reset_params:
+      level: 3
+    action_schema:
+      action_type: scan_traffic | query_metrics | isolate_pod | declare_resolved
+      agent: incident_commander | diagnostics | security
+    grader: graders:grade_task_2
+    graders:
+      - graders:grade_task_2
+    reward_range:
+      - 0.0
+      - 1.0
+
+  - id: sre-compound-chaos
+    task_id: sre-compound-chaos
+    name: Compound Chaos Event
+    difficulty: hard
+    description: Multiple simultaneous failures - node down, service degraded, pod crashlooping.
+    max_steps: 10
+    reset_params:
+      level: 5
+    action_schema:
+      action_type: describe_node | restart_pod | rollback_deployment | declare_resolved
+      agent: incident_commander | diagnostics | remediation | security
+    grader: graders:grade_task_2
+    graders:
+      - graders:grade_task_2
+    reward_range:
+      - 0.0
+      - 1.0

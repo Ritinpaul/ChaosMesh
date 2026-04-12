@@ -7,6 +7,26 @@ port: 8000
 version: 0.2.0
 entry_point: environment:ChaosMeshArenaEnv
 
+environment:
+  class: environment.ChaosMeshArenaEnv
+  init_params: {}
+  methods:
+    reset:
+      description: Reset the environment for a selected SRE incident task.
+      params:
+        task_id:
+          type: integer
+      returns: observation
+    step:
+      description: Submit an SRE action and return (observation, reward, done).
+      params:
+        action:
+          type: object
+      returns: [observation, reward, done]
+    state:
+      description: Return current environment state metadata.
+      returns: state
+
 api:
   base_url: /
   endpoints:
@@ -34,6 +54,7 @@ inference:
     - MODEL_NAME
     - HF_TOKEN
 
+
 tasks:
   - id: sre-pod-crashloop
     task_id: sre-pod-crashloop
@@ -43,15 +64,13 @@ tasks:
     max_steps: 8
     reset_params:
       task_id: 0
-    action_schema:
-      action_type: restart_pod | get_logs | describe_pod | declare_resolved
-      agent: incident_commander | diagnostics | remediation
     grader: graders:grade_task_0
     graders:
       - graders:grade_task_0
     reward_range:
       - 0.0
       - 1.0
+    max_reward: 1.0
 
   - id: sre-db-timeout
     task_id: sre-db-timeout
@@ -61,15 +80,13 @@ tasks:
     max_steps: 8
     reset_params:
       task_id: 1
-    action_schema:
-      action_type: query_db_stats | query_metrics | scale_deployment | declare_resolved
-      agent: incident_commander | diagnostics | database
     grader: graders:grade_task_1
     graders:
       - graders:grade_task_1
     reward_range:
       - 0.0
       - 1.0
+    max_reward: 1.0
 
   - id: sre-high-latency
     task_id: sre-high-latency
@@ -79,15 +96,13 @@ tasks:
     max_steps: 8
     reset_params:
       task_id: 2
-    action_schema:
-      action_type: query_metrics | query_traces | scale_deployment | declare_resolved
-      agent: incident_commander | diagnostics | remediation
     grader: graders:grade_task_1
     graders:
       - graders:grade_task_1
     reward_range:
       - 0.0
       - 1.0
+    max_reward: 1.0
 
   - id: sre-node-pressure
     task_id: sre-node-pressure
@@ -97,15 +112,13 @@ tasks:
     max_steps: 8
     reset_params:
       task_id: 3
-    action_schema:
-      action_type: describe_node | drain_node | scale_deployment | declare_resolved
-      agent: incident_commander | diagnostics | remediation
     grader: graders:grade_task_2
     graders:
       - graders:grade_task_2
     reward_range:
       - 0.0
       - 1.0
+    max_reward: 1.0
 
   - id: sre-security-anomaly
     task_id: sre-security-anomaly
@@ -115,15 +128,13 @@ tasks:
     max_steps: 8
     reset_params:
       task_id: 4
-    action_schema:
-      action_type: scan_traffic | query_metrics | isolate_pod | declare_resolved
-      agent: incident_commander | diagnostics | security
     grader: graders:grade_task_2
     graders:
       - graders:grade_task_2
     reward_range:
       - 0.0
       - 1.0
+    max_reward: 1.0
 
   - id: sre-compound-chaos
     task_id: sre-compound-chaos
@@ -133,12 +144,10 @@ tasks:
     max_steps: 10
     reset_params:
       task_id: 5
-    action_schema:
-      action_type: describe_node | restart_pod | rollback_deployment | declare_resolved
-      agent: incident_commander | diagnostics | remediation | security
     grader: graders:grade_task_2
     graders:
       - graders:grade_task_2
     reward_range:
       - 0.0
       - 1.0
+    max_reward: 1.0

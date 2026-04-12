@@ -80,6 +80,7 @@ _TASKS_PAYLOAD = [
         "grader": "graders:grade_task_0",
         "graders": ["graders:grade_task_0"],
         "reward_range": [0.0, 1.0],
+        "max_reward": 1.0,
     },
     {
         "id": "sre-db-timeout",
@@ -92,6 +93,7 @@ _TASKS_PAYLOAD = [
         "grader": "graders:grade_task_1",
         "graders": ["graders:grade_task_1"],
         "reward_range": [0.0, 1.0],
+        "max_reward": 1.0,
     },
     {
         "id": "sre-high-latency",
@@ -104,6 +106,7 @@ _TASKS_PAYLOAD = [
         "grader": "graders:grade_task_1",
         "graders": ["graders:grade_task_1"],
         "reward_range": [0.0, 1.0],
+        "max_reward": 1.0,
     },
     {
         "id": "sre-node-pressure",
@@ -116,6 +119,7 @@ _TASKS_PAYLOAD = [
         "grader": "graders:grade_task_2",
         "graders": ["graders:grade_task_2"],
         "reward_range": [0.0, 1.0],
+        "max_reward": 1.0,
     },
     {
         "id": "sre-security-anomaly",
@@ -128,6 +132,7 @@ _TASKS_PAYLOAD = [
         "grader": "graders:grade_task_2",
         "graders": ["graders:grade_task_2"],
         "reward_range": [0.0, 1.0],
+        "max_reward": 1.0,
     },
     {
         "id": "sre-compound-chaos",
@@ -140,6 +145,7 @@ _TASKS_PAYLOAD = [
         "grader": "graders:grade_task_2",
         "graders": ["graders:grade_task_2"],
         "reward_range": [0.0, 1.0],
+        "max_reward": 1.0,
     },
 ]
 
@@ -158,28 +164,17 @@ def _clamp01(value: float) -> float:
     return max(0.0, min(1.0, float(value)))
 
 
-def _task_payload_for_evaluator(task: dict) -> dict:
-    """Return evaluator-friendly task shape with explicit grader metadata."""
-    task_out = dict(task)
-    grader_ref = task.get("grader")
-    task_out["grader_ref"] = grader_ref
-    task_out["grader"] = {
-        "type": "reward_threshold",
-        "threshold": 0.1,
-        "max_steps": int(task.get("max_steps", 8)),
-    }
-    # Preserve legacy string list for backwards compatibility.
-    if grader_ref:
-        task_out["graders"] = [grader_ref]
-    return task_out
-
-
 @router.get("/tasks", include_in_schema=True, tags=["openenv"])
 @router.get("/openenv/tasks", include_in_schema=False)
 @router.get("/api/tasks", include_in_schema=False)
 async def list_tasks():
-    """List all available benchmark tasks with their grader references."""
-    return {"tasks": [_task_payload_for_evaluator(task) for task in _TASKS_PAYLOAD]}
+    """List all available benchmark tasks with grader string references.
+
+    CRITICAL: grader field MUST be a string like 'graders:grade_task_0'.
+    The validator parses this as module:function and imports it.
+    Do NOT transform grader into a dict object.
+    """
+    return {"tasks": list(_TASKS_PAYLOAD)}
 
 
 # ── /grader  ───────────────────────────────────────────────────────────────────

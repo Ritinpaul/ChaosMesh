@@ -161,7 +161,9 @@ if frontend_dist.exists():
     async def serve_react(full_path: str):
         """SPA fallback — serve index.html for all non-API routes."""
         _api_prefixes = ("env/", "demo/", "auth/", "episodes/", "leaderboard/",
-                         "health", "metrics", "docs", "redoc", "openapi.json")
+                         "health", "metrics", "docs", "redoc", "openapi.json",
+                         "tasks", "grader", "reset", "step", "state",
+                         "openenv/", "api/")
         if any(full_path.startswith(p) for p in _api_prefixes):
             from fastapi.responses import JSONResponse
             return JSONResponse({"detail": "Not Found"}, status_code=404)

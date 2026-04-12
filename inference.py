@@ -263,6 +263,8 @@ def main() -> None:
         # ── Compute normalised score ───────────────────────────────────────────
         total_reward = sum(rewards)
         score = total_reward / MAX_TOTAL_REWARD if MAX_TOTAL_REWARD > 0 else 0.0
+        if score != score:  # NaN-safe guard
+            score = 0.0
         score = min(max(score, 0.0), 1.0)   # clamp to [0, 1]
         success = score >= SUCCESS_SCORE_THRESHOLD
 

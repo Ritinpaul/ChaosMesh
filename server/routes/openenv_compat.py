@@ -154,12 +154,32 @@ _GRADER_MAP = {
 }
 
 
+def _clamp01(value: float) -> float:
+    return max(0.0, min(1.0, float(value)))
+
+
+def _task_payload_for_evaluator(task: dict) -> dict:
+    """Return evaluator-friendly task shape with explicit grader metadata."""
+    task_out = dict(task)
+    grader_ref = task.get("grader")
+    task_out["grader_ref"] = grader_ref
+    task_out["grader"] = {
+        "type": "reward_threshold",
+        "threshold": 0.1,
+        "max_steps": int(task.get("max_steps", 8)),
+    }
+    # Preserve legacy string list for backwards compatibility.
+    if grader_ref:
+        task_out["graders"] = [grader_ref]
+    return task_out
+
+
 @router.get("/tasks", include_in_schema=True, tags=["openenv"])
 @router.get("/openenv/tasks", include_in_schema=False)
 @router.get("/api/tasks", include_in_schema=False)
 async def list_tasks():
     """List all available benchmark tasks with their grader references."""
-    return _TASKS_PAYLOAD
+    return {"tasks": [_task_payload_for_evaluator(task) for task in _TASKS_PAYLOAD]}
 
 
 # ── /grader  ───────────────────────────────────────────────────────────────────
@@ -181,18 +201,68 @@ async def run_grader(request: FastAPIRequest):
         body = {}
 
     task_id = body.get("task_id", "sre-pod-crashloop")
-    # Validator calls with (state, reward) — support both body shapes
-    state = body.get("state", body.get("episode", body.get("trajectory", {})))
-    if isinstance(state, list):
-        state = state[-1] if state else {}
-    reward = float(body.get("reward", body.get("score", 0.0)))
+    task = next((t for t in _TASKS_PAYLOAD if t.get("task_id") == task_id), None)
+    if task is None:
+        return JSONResponse(
+            {
+                "task_id": task_id,
+                "score": 0.0,
+                "passed": False,
+                "feedback": f"Unknown task_id: {task_id}",
+            },
+            status_code=200,
+        )
 
-    try:
-        import graders as _g
-        fn_name = _GRADER_MAP.get(task_id, "grade_task_0")
-        fn = getattr(_g, fn_name)
-        score = fn(state if isinstance(state, dict) else {})  # SINGLE ARG
-    except Exception as exc:
-        return JSONResponse({"score": 0.5, "error": str(exc)}, status_code=200)
+    # Fast path: evaluator may send score directly.
+    if body.get("score") is not None:
+        final_score = _clamp01(body.get("score"))
+    else:
+        # Trajectory path: compute normalized score from reward per step.
+        trajectory = body.get("trajectory", [])
+        if isinstance(trajectory, list) and trajectory:
+            rewards: list[float] = []
+            for step in trajectory:
+                if not isinstance(step, dict):
+                    continue
+                reward_value = step.get("reward", 0.0)
+                if isinstance(reward_value, dict):
+                    reward_value = reward_value.get("total", 0.0)
+                try:
+                    rewards.append(float(reward_value))
+                except (TypeError, ValueError):
+                    rewards.append(0.0)
+            total = sum(rewards)
+            max_possible = len(rewards) * 5.0 if rewards else 1.0
+            final_score = _clamp01(total / max_possible)
+        else:
+            # Backward-compat with state-based grader functions.
+            state = body.get("state", body.get("episode", {}))
+            if isinstance(state, list):
+                state = state[-1] if state else {}
+            try:
+                import graders as _g
+                fn_name = _GRADER_MAP.get(task_id, "grade_task_0")
+                fn = getattr(_g, fn_name)
+                final_score = _clamp01(fn(state if isinstance(state, dict) else {}))
+            except Exception as exc:
+                return JSONResponse(
+                    {
+                        "task_id": task_id,
+                        "score": 0.0,
+                        "passed": False,
+                        "feedback": f"Grader error: {exc}",
+                    },
+                    status_code=200,
+                )
 
-    return JSONResponse({"score": float(score)})
+    threshold = 0.1
+    passed = final_score >= threshold
+    return JSONResponse(
+        {
+            "task_id": task_id,
+            "score": round(final_score, 4),
+            "passed": passed,
+            "feedback": "Resolved" if passed else "Not resolved within step budget",
+        },
+        status_code=200,
+    )

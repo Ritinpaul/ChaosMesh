@@ -191,7 +191,7 @@ async def run_grader(request: FastAPIRequest):
         import graders as _g
         fn_name = _GRADER_MAP.get(task_id, "grade_task_0")
         fn = getattr(_g, fn_name)
-        score = fn(state if isinstance(state, dict) else {}, reward)
+        score = fn(state if isinstance(state, dict) else {})  # SINGLE ARG
     except Exception as exc:
         return JSONResponse({"score": 0.5, "error": str(exc)}, status_code=200)
 

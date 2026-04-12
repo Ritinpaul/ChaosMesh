@@ -148,8 +148,7 @@ class ChaosMeshArenaEnv:
         fn = getattr(_g, fn_name)
 
         state = episode if isinstance(episode, dict) else {}
-        reward = float(state.get("score", state.get("reward", 0.0)))
-        return fn(state, reward)
+        return fn(state)  # SINGLE ARG — validator calls grade_task_N(state)
 
     # ── Gymnasium-like stubs (for compatibility only) ─────────────────────────
 

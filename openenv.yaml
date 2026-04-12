@@ -64,9 +64,9 @@ tasks:
     max_steps: 8
     reset_params:
       task_id: 0
-    grader: graders:grade_task_0
+    grader: graders:SREGrader0
     graders:
-      - graders:grade_task_0
+      - graders:SREGrader0
     reward_range:
       - 0.0
       - 1.0
@@ -80,9 +80,9 @@ tasks:
     max_steps: 8
     reset_params:
       task_id: 1
-    grader: graders:grade_task_1
+    grader: graders:SREGrader1
     graders:
-      - graders:grade_task_1
+      - graders:SREGrader1
     reward_range:
       - 0.0
       - 1.0
@@ -96,9 +96,9 @@ tasks:
     max_steps: 8
     reset_params:
       task_id: 2
-    grader: graders:grade_task_1
+    grader: graders:SREGrader1
     graders:
-      - graders:grade_task_1
+      - graders:SREGrader1
     reward_range:
       - 0.0
       - 1.0
@@ -112,9 +112,9 @@ tasks:
     max_steps: 8
     reset_params:
       task_id: 3
-    grader: graders:grade_task_2
+    grader: graders:SREGrader2
     graders:
-      - graders:grade_task_2
+      - graders:SREGrader2
     reward_range:
       - 0.0
       - 1.0
@@ -128,9 +128,9 @@ tasks:
     max_steps: 8
     reset_params:
       task_id: 4
-    grader: graders:grade_task_2
+    grader: graders:SREGrader2
     graders:
-      - graders:grade_task_2
+      - graders:SREGrader2
     reward_range:
       - 0.0
       - 1.0
@@ -144,9 +144,9 @@ tasks:
     max_steps: 10
     reset_params:
       task_id: 5
-    grader: graders:grade_task_2
+    grader: graders:SREGrader2
     graders:
-      - graders:grade_task_2
+      - graders:SREGrader2
     reward_range:
       - 0.0
       - 1.0

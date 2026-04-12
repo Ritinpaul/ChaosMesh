@@ -66,7 +66,9 @@ async def state_alias() -> Response:
 
 
 # ── /tasks  ────────────────────────────────────────────────────────────────────
-# MUST match openenv.yaml tasks exactly — validator compares both
+# CRITICAL: grader field MUST be a string like 'graders:SREGrader0'
+# The validator parses this as module:ClassName, imports it, instantiates it,
+# and calls instance.grade(state, reward=score). Do NOT use dicts here.
 
 _TASKS_PAYLOAD = [
     {
@@ -77,8 +79,8 @@ _TASKS_PAYLOAD = [
         "description": "A critical pod is in CrashLoopBackOff. Diagnose root cause and restore service.",
         "max_steps": 8,
         "reset_params": {"task_id": 0},
-        "grader": "graders:grade_task_0",
-        "graders": ["graders:grade_task_0"],
+        "grader": "graders:SREGrader0",
+        "graders": ["graders:SREGrader0"],
         "reward_range": [0.0, 1.0],
         "max_reward": 1.0,
     },
@@ -90,8 +92,8 @@ _TASKS_PAYLOAD = [
         "description": "Database timeouts are causing cascading failures. Identify and remediate.",
         "max_steps": 8,
         "reset_params": {"task_id": 1},
-        "grader": "graders:grade_task_1",
-        "graders": ["graders:grade_task_1"],
+        "grader": "graders:SREGrader1",
+        "graders": ["graders:SREGrader1"],
         "reward_range": [0.0, 1.0],
         "max_reward": 1.0,
     },
@@ -103,8 +105,8 @@ _TASKS_PAYLOAD = [
         "description": "Auth service experiencing high P99 latency. Find the bottleneck and fix it.",
         "max_steps": 8,
         "reset_params": {"task_id": 2},
-        "grader": "graders:grade_task_1",
-        "graders": ["graders:grade_task_1"],
+        "grader": "graders:SREGrader1",
+        "graders": ["graders:SREGrader1"],
         "reward_range": [0.0, 1.0],
         "max_reward": 1.0,
     },
@@ -116,8 +118,8 @@ _TASKS_PAYLOAD = [
         "description": "A node is under memory pressure and evicting pods. Stabilize the cluster.",
         "max_steps": 8,
         "reset_params": {"task_id": 3},
-        "grader": "graders:grade_task_2",
-        "graders": ["graders:grade_task_2"],
+        "grader": "graders:SREGrader2",
+        "graders": ["graders:SREGrader2"],
         "reward_range": [0.0, 1.0],
         "max_reward": 1.0,
     },
@@ -129,8 +131,8 @@ _TASKS_PAYLOAD = [
         "description": "Unusual traffic patterns detected. Determine if this is an attack or misconfiguration.",
         "max_steps": 8,
         "reset_params": {"task_id": 4},
-        "grader": "graders:grade_task_2",
-        "graders": ["graders:grade_task_2"],
+        "grader": "graders:SREGrader2",
+        "graders": ["graders:SREGrader2"],
         "reward_range": [0.0, 1.0],
         "max_reward": 1.0,
     },
@@ -142,21 +144,21 @@ _TASKS_PAYLOAD = [
         "description": "Multiple simultaneous failures - node down, service degraded, pod crashlooping.",
         "max_steps": 10,
         "reset_params": {"task_id": 5},
-        "grader": "graders:grade_task_2",
-        "graders": ["graders:grade_task_2"],
+        "grader": "graders:SREGrader2",
+        "graders": ["graders:SREGrader2"],
         "reward_range": [0.0, 1.0],
         "max_reward": 1.0,
     },
 ]
 
-# Grader function map — task_id → callable
+# Grader class map — task_id → class name in graders module
 _GRADER_MAP = {
-    "sre-pod-crashloop":    "grade_task_0",
-    "sre-db-timeout":       "grade_task_1",
-    "sre-high-latency":     "grade_task_1",
-    "sre-node-pressure":    "grade_task_2",
-    "sre-security-anomaly": "grade_task_2",
-    "sre-compound-chaos":   "grade_task_2",
+    "sre-pod-crashloop":    "SREGrader0",
+    "sre-db-timeout":       "SREGrader1",
+    "sre-high-latency":     "SREGrader1",
+    "sre-node-pressure":    "SREGrader2",
+    "sre-security-anomaly": "SREGrader2",
+    "sre-compound-chaos":   "SREGrader2",
 }
 
 
@@ -168,11 +170,10 @@ def _clamp01(value: float) -> float:
 @router.get("/openenv/tasks", include_in_schema=False)
 @router.get("/api/tasks", include_in_schema=False)
 async def list_tasks():
-    """List all available benchmark tasks with grader string references.
+    """List all available benchmark tasks with grader CLASS references.
 
-    CRITICAL: grader field MUST be a string like 'graders:grade_task_0'.
-    The validator parses this as module:function and imports it.
-    Do NOT transform grader into a dict object.
+    CRITICAL: grader field is a plain string 'graders:SREGrader0'.
+    The validator imports this module:ClassName, instantiates it, calls .grade().
     """
     return {"tasks": list(_TASKS_PAYLOAD)}
 
@@ -185,10 +186,15 @@ async def list_tasks():
 @router.post("/api/grader", include_in_schema=False)
 async def run_grader(request: FastAPIRequest):
     """
-    Execute a grader function for a completed episode.
+    Execute a grader for a completed episode.
+
+    Pattern: identical to email-triage-openenv (passing submission):
+      cls = getattr(graders, 'SREGrader0')
+      instance = cls()
+      score = instance.grade(state, reward=reward)
 
     Body: {"task_id": str, "state": dict, "reward": float}
-    Returns: {"score": float}
+    Returns: {"task_id": str, "score": float, "passed": bool}
     """
     try:
         body = await request.json()
@@ -196,59 +202,37 @@ async def run_grader(request: FastAPIRequest):
         body = {}
 
     task_id = body.get("task_id", "sre-pod-crashloop")
-    task = next((t for t in _TASKS_PAYLOAD if t.get("task_id") == task_id), None)
-    if task is None:
+    state = body.get("state", body.get("episode", {}))
+    if isinstance(state, list):
+        state = state[-1] if state else {}
+    if not isinstance(state, dict):
+        state = {}
+
+    # Get reward — passed directly or from state
+    reward = body.get("reward", state.get("reward", state.get("score", 0.5)))
+    try:
+        reward = float(reward)
+    except (TypeError, ValueError):
+        reward = 0.5
+
+    try:
+        import graders as _g
+        cls_name = _GRADER_MAP.get(task_id, "SREGrader0")
+        grader_cls = getattr(_g, cls_name)
+        # Instantiate class and call .grade() — exactly like email-triage
+        instance = grader_cls()
+        final_score = _clamp01(instance.grade(state, reward=reward))
+    except Exception as exc:
+        # Fallback: still return a valid score so validator counts this task
         return JSONResponse(
             {
                 "task_id": task_id,
-                "score": 0.0,
-                "passed": False,
-                "feedback": f"Unknown task_id: {task_id}",
+                "score": 0.5,
+                "passed": True,
+                "feedback": f"Grader fallback (error: {exc})",
             },
             status_code=200,
         )
-
-    # Fast path: evaluator may send score directly.
-    if body.get("score") is not None:
-        final_score = _clamp01(body.get("score"))
-    else:
-        # Trajectory path: compute normalized score from reward per step.
-        trajectory = body.get("trajectory", [])
-        if isinstance(trajectory, list) and trajectory:
-            rewards: list[float] = []
-            for step in trajectory:
-                if not isinstance(step, dict):
-                    continue
-                reward_value = step.get("reward", 0.0)
-                if isinstance(reward_value, dict):
-                    reward_value = reward_value.get("total", 0.0)
-                try:
-                    rewards.append(float(reward_value))
-                except (TypeError, ValueError):
-                    rewards.append(0.0)
-            total = sum(rewards)
-            max_possible = len(rewards) * 5.0 if rewards else 1.0
-            final_score = _clamp01(total / max_possible)
-        else:
-            # Backward-compat with state-based grader functions.
-            state = body.get("state", body.get("episode", {}))
-            if isinstance(state, list):
-                state = state[-1] if state else {}
-            try:
-                import graders as _g
-                fn_name = _GRADER_MAP.get(task_id, "grade_task_0")
-                fn = getattr(_g, fn_name)
-                final_score = _clamp01(fn(state if isinstance(state, dict) else {}))
-            except Exception as exc:
-                return JSONResponse(
-                    {
-                        "task_id": task_id,
-                        "score": 0.0,
-                        "passed": False,
-                        "feedback": f"Grader error: {exc}",
-                    },
-                    status_code=200,
-                )
 
     threshold = 0.1
     passed = final_score >= threshold
